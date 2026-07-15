@@ -1,4 +1,20 @@
-# Pipeline Computer Vision: Deteksi Mutu Kesegaran Daging Sapi Multidomain
+---
+license: mit
+library_name: scikit-learn
+tags:
+- computer-vision
+- image-processing
+- unsupervised-learning
+- bag-of-visual-words
+- sift
+- surf
+- kmeans
+- meat-quality
+- beef-grading
+---
+
+
+# Pipeline Beef Research BIMA: Deteksi Mutu Kesegaran Daging Sapi Multidomain
 
 Pipeline **unsupervised** (SIFT/SURF -> Bags of Visual Words -> Clustering) untuk
 dataset citra daging sapi multidomain (RPH & UMKM), seluruh proses klasifikasi mutu dilakukan tanpa pelatihan supervised
