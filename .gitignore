@@ -1,0 +1,48 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+*.pyc
+.DS_Store
+Thumbs.db
+
+test.py
+
+# Virtual environments
+.venv
+
+.env
+outputs/interim/
+outputs/logs/
+outputs/figures/
+outputs-v1/interim/
+outputs-v1/logs/
+outputs/visualized_segments/
+
+
+
+data/dataset_root/
+data/01_raw/*
+data/02_processed/*
+data/03_features/*
+results/figures/*
+
+pertahankan folder dengan file kosong .gitkeep
+!data/01_raw/.gitkeep
+!data/02_processed/.gitkeep
+!data/03_features/.gitkeep
+!results/figures/.gitkeep
+
+.vscode/
+.idea/
+
+
+
+<<<<<<< HEAD
+/results
+
+=======
+>>>>>>> bdb5b47fc05627063c1ade15705b9dca12b5f889
