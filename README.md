@@ -1,8 +1,7 @@
 # Pipeline Computer Vision: Deteksi Mutu Kesegaran Daging Sapi Multidomain
 
 Pipeline **unsupervised** (SIFT/SURF -> Bags of Visual Words -> Clustering) untuk
-dataset citra daging sapi multidomain (RPH & UMKM), sesuai arahan teknis dosen
-pembimbing: seluruh proses klasifikasi mutu dilakukan tanpa pelatihan supervised
+dataset citra daging sapi multidomain (RPH & UMKM), seluruh proses klasifikasi mutu dilakukan tanpa pelatihan supervised
 (tanpa SVM/KNN), murni berbasis unsupervised learning.
 
 ## 1. Setup Environment (uv, Python 3.7, OpenCV 3.4.2.16)
