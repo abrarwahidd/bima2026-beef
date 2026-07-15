@@ -103,7 +103,7 @@ outputs/
    sebagai histogram fitur ternormalisasi.
 
 4. **Clustering Unsupervised** (`src/clustering.py`)
-   K-Means (k=2), Gaussian Mixture, dan Agglomerative Clustering dibandingkan
+   K-Means (k=2) dan Gaussian Mixture dibandingkan
    untuk membagi citra ke 2 klaster akhir (Segar/Tidak Segar).
 
 5. **Evaluasi & Komparasi SIFT vs SURF** (`src/evaluation.py`, `src/visualization.py`)
