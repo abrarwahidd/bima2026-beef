@@ -1,9 +1,5 @@
 """
-Ekstraksi fitur lokal SIFT & SURF, serta momen HSV, dibatasi pada area ROI daging (mask).
-
-Membutuhkan opencv-contrib-python versi yang dikompilasi dengan
-OPENCV_ENABLE_NONFREE=ON (mis. 3.4.2.16) agar cv2.xfeatures2d.SIFT_create()
-dan cv2.xfeatures2d.SURF_create() tersedia.
+Ekstraksi fitur SIFT & SURF, serta momen HSV, dibatasi pada area ROI daging (mask).
 """
 import time
 import cv2

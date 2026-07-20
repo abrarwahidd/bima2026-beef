@@ -1,4 +1,4 @@
-"""Preprocessing citra: resize, denoising, segmentasi ROI, QA visual, dan Bounding Box Crop."""
+"""Preprocessing: resize, denoising, segmentasi ROI, QA visual, dan Bounding Box Crop."""
 import os
 import cv2
 import numpy as np
@@ -32,20 +32,19 @@ def crop_to_bounding_box(image, mask, pad_ratio=0.01):
     Mengeliminasi redundansi dimensi latar belakang untuk menjaga kemurnian
     ekstraksi fitur spasial (SURF) dan momen statistik warna (HSV).
     """
-    # 1. Ekstraksi koordinat absolut dari piksel foreground murni
+    #1.Ekstraksi koordinat absolut dari piksel foreground murni
     coords = cv2.findNonZero(mask)
     
     # Fallback jika mask secara anomali kosong
     if coords is None:
         return image, mask
         
-    # 2. Kalkulasi bounding box yang presisi mengelilingi piksel aktif
+    #2.Kalkulasi bounding box yang presisi mengelilingi piksel aktif
     x, y, w, h_rect = cv2.boundingRect(coords)
     
     H, W = image.shape[:2]
     
-    # 3. Margin sangat ketat (1% dari dimensi objek) 
-    # untuk menyisakan sedikit ruang agar detektor tepi SURF tidak terpotong
+    #3.Margin ketat (1% dari dimensi objek) untuk menyisakan sedikit ruang agar detektor tepi SURF tidak terpotong
     pad_x, pad_y = int(w * pad_ratio), int(h_rect * pad_ratio)
     
     x1, y1 = max(0, x - pad_x), max(0, y - pad_y)

@@ -16,14 +16,25 @@ test.py
 
 .env
 outputs/interim/
+outputs-publik/interim/
+
 outputs/logs/
+outputs-publik/logs/
+
 outputs/figures/
-outputs-v1/interim/
-outputs-v1/logs/
+outputs-publik/figures/
+
 outputs/visualized_segments/
+outputs-publik/visualized_segments/
+
+archives/
+
+outputs-publik
 
 
-
+outputs-denoise/
+outputs-bima/
+data/data-publik/
 data/dataset_root/
 data/01_raw/*
 data/02_processed/*
@@ -41,8 +52,5 @@ pertahankan folder dengan file kosong .gitkeep
 
 
 
-<<<<<<< HEAD
 /results
 
-=======
->>>>>>> bdb5b47fc05627063c1ade15705b9dca12b5f889

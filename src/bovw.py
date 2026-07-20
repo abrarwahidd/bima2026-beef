@@ -1,4 +1,4 @@
-"""Bags of Visual Words: pembentukan codebook (MiniBatchKMeans) & histogram fitur."""
+"""Bags of Visual Words - pembentukan codebook (MiniBatchKMeans) & histogram fitur."""
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 
@@ -8,8 +8,7 @@ import config
 def sample_descriptors_for_codebook(all_descriptors_list, max_total, random_state):
     """
     Menggabungkan descriptor dari seluruh citra lalu men-subsample hingga
-    maksimum `max_total` baris agar pelatihan codebook tetap efisien memori
-    untuk dataset beribu-ribu citra.
+    maksimum `max_total` baris agar pelatihan codebook tetap efisien.
     """
     stacked = np.vstack(
         [d for d in all_descriptors_list if d is not None and len(d) > 0]
@@ -59,7 +58,7 @@ def compute_histogram(descriptors, codebook, normalize="hellinger"):
         if total > 0:
             histogram = histogram / total
     elif normalize == "hellinger":
-        # Transformasi Root-BoVW (Sangat superior untuk deteksi tekstur)
+        # Transformasi Root-BoVW
         total = histogram.sum()
         if total > 0:
             histogram = histogram / total

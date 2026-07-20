@@ -9,6 +9,8 @@ import os
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
+DATASET_DOMAIN = "DATA-BIMA"  # Ubah sesuai domain dataset yang digunakan
+
 RAW_DATA_DIR = os.path.join(PROJECT_ROOT, "data", "dataset_root")
 LABELS_CSV = os.path.join(PROJECT_ROOT, "data", "labels.csv")
 
@@ -54,7 +56,7 @@ HSV_FUSION_WEIGHT = 3.0       # Nilai default optimal dari hasil tuning
 # ---------------------------------------------------------------------------
 # BAGS OF VISUAL WORDS
 # ---------------------------------------------------------------------------
-CODEBOOK_SIZES = [200]
+CODEBOOK_SIZES = [50, 100, 200]
 DEFAULT_CODEBOOK_SIZE = 200   # Nilai default optimal dari hasil tuning
 MAX_DESCRIPTORS_FOR_CODEBOOK = 200_000
 MINIBATCH_KMEANS_BATCH_SIZE = 2000

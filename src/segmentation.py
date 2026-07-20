@@ -13,11 +13,11 @@ def segment_meat_roi(image_bgr, min_area_ratio=0.015):
     h, w = image_bgr.shape[:2]
     total_area = float(h * w)
 
-    # 1. Konversi ke HSV dengan reduksi blur untuk menjaga ketegasan batas tepi
+    # 1.Konversi ke HSV dengan reduksi blur untuk menjaga ketegasan batas tepi
     blurred = cv2.GaussianBlur(image_bgr, (7, 7), 0)
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-    # 2. Strict Spectrum Isolation
+    # 2.Strict Spectrum Isolation
     # S > 50 dan V > 40 membuang warna netral (hitam/abu-abu latar & putih stiker)
     # H: 0-20 & 160-180 murni mengunci pigmen mioglobin (merah/pink/cokelat)
     mask1 = cv2.inRange(hsv, np.array([0, 30, 25]), np.array([30, 255, 255]))

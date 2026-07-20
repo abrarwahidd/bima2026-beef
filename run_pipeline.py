@@ -14,8 +14,10 @@ Contoh pemakaian:
 """
 import argparse
 import os
+import shutil
 import time
 import json
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -604,16 +606,170 @@ def step_export():
     print(df_report.head(10).to_string(index=False))
     print("="*70)
 
-    # --- [INJEKSI KODE BARU: GRAFIK DISTRIBUSI TEMPORAL] ---
-    logger.info("Menghasilkan visualisasi Distribusi Temporal (DAY-1 vs DAY-2)...")
-    visualization.plot_temporal_distribution(
-        df_report, 
-        save_name="temporal_cluster_distribution.png"
-    )
-    logger.info("Grafik distribusi klaster otonom tersimpan di direktori figures.")
+    # --- [PERBAIKAN: MEKANISME GUARDRAIL UNTUK DATASET PUBLIK] ---
+    # Periksa apakah kolom 'Hari Ke-' seluruhnya kosong (None/NaN)
+    if df_report['Hari Ke-'].isnull().all():
+        logger.warning(
+            "Dataset eksternal (publik) terdeteksi. Metadata temporal ('Hari Ke-') tidak "
+            "tersedia. Pembuatan grafik Distribusi Temporal secara otomatis dilewati."
+        )
+    else:
+        logger.info("Menghasilkan visualisasi Distribusi Temporal (DAY-1 vs DAY-2)...")
+        visualization.plot_temporal_distribution(
+            df_report, 
+            save_name=f"temporal_cluster_{config.DATASET_DOMAIN}.png"
+        )
+        logger.info("Grafik distribusi klaster otonom tersimpan di direktori figures.")
     # --- [AKHIR INJEKSI KODE BARU] ---
 
 
+from typing import Dict, Any
+
+def _execute_single_scenario(sc: Dict[str, Any], dict_sift: dict, dict_surf: dict, 
+                             code_dir: str, results_dir: str) -> dict:
+    """
+    Helper function (Private Method): 
+    Mengeksekusi satu iterasi eksperimen otonom (ekstraksi matriks laten, 
+    reduksi dimensi, dan klastering) serta mengembalikan matriks evaluasinya.
+    """
+    # 1. Penentuan target dictionary berdasarkan skenario
+    target_dict = dict_sift if sc["feat"] == "SIFT" else dict_surf
+    X_current = target_dict[sc["k"]].copy()
+    
+    # 2. Operasi Ablasi Fusi Warna (HSV)
+    if not sc["use_hsv"]:
+        X_current = X_current[:, :-9]
+        
+    # 3. Operasi Reduksi Dimensi (PCA)
+    if sc["space"] == "pca":
+        # Mencegah komponen PCA melampaui dimensi sampel
+        n_comp = min(sc["pca_comp"], X_current.shape[1] - 1)
+        pca = PCA(n_components=n_comp, random_state=config.RANDOM_STATE)
+        X_current = pca.fit_transform(X_current)
+        
+    # 4. Pemanggilan Algoritma Klastering Otonom
+    if sc["algo"] == "kmeans":
+        labels, _ = clustering.run_kmeans(X_current)
+    else:
+        labels, _ = clustering.run_gmm(X_current)
+        
+    # 5. Kalkulasi Metrik Separabilitas Spasial
+    metrics = clustering.internal_validation(X_current, labels)
+    
+    return metrics
+
+
+#EKSPERIMEN SENSITIVITAS ANALISIS
+def step_batch_experiment() -> None:
+    logger.info("=== TAHAP EKSPERIMEN BATCH & SENSITIVITY ANALYSIS ===")
+    
+    sift_path = os.path.join(config.INTERIM_DIR, "histograms_sift.pkl")
+    surf_path = os.path.join(config.INTERIM_DIR, "histograms_surf.pkl")
+    efficiency_path = os.path.join(config.TABLES_DIR, "efficiency_summary.csv")
+    
+    if not os.path.exists(sift_path) or not os.path.exists(efficiency_path):
+        logger.warning("Fitur dasar atau data efisiensi belum ada. Harap jalankan ekstraksi terlebih dahulu.")
+        return
+        
+    dict_sift = utils.load_pickle(sift_path)
+    dict_surf = utils.load_pickle(surf_path)
+    
+    # 1. Pemuatan dan Pemetaan Data Efisiensi
+    df_eff = pd.read_csv(efficiency_path)
+    df_eff['method'] = df_eff['method'].str.upper()
+    
+    eff_lookup = {}
+    for _, row in df_eff.iterrows():
+        eff_lookup[row['method']] = {
+            'elapsed_sec': round(row['mean_elapsed_sec'], 4),
+            'std_sec': round(row['std_elapsed_sec'], 4),
+            'n_keypoints': int(round(row['mean_n_keypoints'], 0))
+        }
+    
+    # 2. Definisi 14 Skenario Eksperimen (SINTA 1/2 Standard)
+    scenarios = [
+        {"id": "EXP-001", "feat": "SIFT", "k": 200, "use_hsv": True, "space": "raw", "algo": "kmeans", "pca_comp": None},
+        {"id": "EXP-002", "feat": "SURF", "k": 200, "use_hsv": True, "space": "raw", "algo": "kmeans", "pca_comp": None},
+        {"id": "EXP-003", "feat": "SIFT", "k": 200, "use_hsv": True, "space": "pca", "algo": "kmeans", "pca_comp": 30},
+        {"id": "EXP-004", "feat": "SURF", "k": 200, "use_hsv": True, "space": "pca", "algo": "kmeans", "pca_comp": 30},
+        {"id": "EXP-005", "feat": "SIFT", "k": 200, "use_hsv": True, "space": "pca", "algo": "gmm", "pca_comp": 30},
+        {"id": "EXP-006", "feat": "SURF", "k": 200, "use_hsv": True, "space": "pca", "algo": "gmm", "pca_comp": 30},
+        {"id": "EXP-007", "feat": "SIFT", "k": 50,  "use_hsv": True, "space": "pca", "algo": "kmeans", "pca_comp": 30},
+        {"id": "EXP-008", "feat": "SIFT", "k": 100, "use_hsv": True, "space": "pca", "algo": "kmeans", "pca_comp": 30},
+        {"id": "EXP-009", "feat": "SURF", "k": 50,  "use_hsv": True, "space": "pca", "algo": "kmeans", "pca_comp": 30},
+        {"id": "EXP-010", "feat": "SURF", "k": 100, "use_hsv": True, "space": "pca", "algo": "kmeans", "pca_comp": 30},
+        {"id": "EXP-011", "feat": "SIFT", "k": 200, "use_hsv": False, "space": "pca", "algo": "kmeans", "pca_comp": 30},
+        {"id": "EXP-012", "feat": "SURF", "k": 200, "use_hsv": False, "space": "pca", "algo": "kmeans", "pca_comp": 30},
+        {"id": "EXP-013", "feat": "SIFT", "k": 200, "use_hsv": False, "space": "raw", "algo": "kmeans", "pca_comp": None},
+        {"id": "EXP-014", "feat": "SURF", "k": 200, "use_hsv": False, "space": "raw", "algo": "kmeans", "pca_comp": None},
+    ]
+    
+    experiment_logs = []
+    base_archive_path = os.path.join(os.getcwd(), "archives")
+    os.makedirs(base_archive_path, exist_ok=True)
+    
+    # Menghasilkan format tanggal (YYYYMMDD) untuk penomoran ID
+    date_str = datetime.datetime.now().strftime("%Y%m%d")
+    # Mempertahankan timestamp detik untuk nama file Master Log
+    timestamp_full = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Menggunakan enumerate untuk menghasilkan sekuens otomatis (01, 02, dst.)
+    for idx, sc in enumerate(scenarios, start=1):
+        # Membentuk ID Eksperimen: EXP-YYYYMMDD-XX
+        seq_str = f"{idx:02d}"
+        exp_id = f"EXP-{date_str}-{seq_str}"
+        
+        # Menimpa 'id' lama agar ID baru terekam di Master Log
+        sc["id"] = exp_id 
+        
+        extractor = sc["feat"]
+        logger.info(f"Mengeksekusi {exp_id}: {extractor} k={sc['k']} HSV={sc['use_hsv']} {sc['space'].upper()} {sc['algo'].upper()}")
+        
+        # A. Pembuatan Direktori Arsip Otonom (Struktur Nama Singkat & Domain Terisolasi)
+        folder_name = f"{config.DATASET_DOMAIN}_{exp_id}"
+        exp_dir = os.path.join(base_archive_path, folder_name)
+        code_dir, results_dir = os.path.join(exp_dir, "code_snapshot"), os.path.join(exp_dir, "results")
+        os.makedirs(code_dir, exist_ok=True)
+        os.makedirs(results_dir, exist_ok=True)
+        
+        # B. Snapshot Source Code
+        for file in os.listdir("."):
+            if file.endswith(".py") or file.endswith(".json"):
+                shutil.copy(file, code_dir)
+        if os.path.exists("src"):
+            shutil.copytree("src", os.path.join(code_dir, "src"))
+            
+        # C. Eksekusi Skenario Komputasi Laten
+        metrics = _execute_single_scenario(sc, dict_sift, dict_surf, code_dir, results_dir)
+        
+        # D. Integrasi Metrik Efisiensi ke dalam Log
+        eff_data = eff_lookup.get(extractor, {'elapsed_sec': 0, 'std_sec': 0, 'n_keypoints': 0})
+        metrics["efficiency"] = eff_data
+        
+        # Memperbarui JSON di dalam folder arsip
+        with open(os.path.join(results_dir, "evaluation_metrics.json"), "w") as f:
+            json.dump(metrics, f, indent=4)
+            
+        # E. Pencatatan ke Master Log Tabular
+        experiment_logs.append({
+            "ID Eksperimen": exp_id,
+            "Ekstraktor": extractor,
+            "Konfigurasi": f"{extractor} k={sc['k']} HSV={sc['use_hsv']}",
+            "Ruang & Algo": f"{sc['space'].upper()} + {sc['algo'].upper()}",
+            "Silhouette (↑)": round(metrics.get("silhouette_score", 0), 4),
+            "Davies-Bouldin (↓)": round(metrics.get("davies_bouldin_score", 0), 4),
+            "Calinski-Harabasz (↑)": round(metrics.get("calinski_harabasz_score", 0), 2),
+            "Waktu Ekstraksi (det/citra) (↓)": eff_data["elapsed_sec"],
+            "Std Dev Waktu (±)": eff_data["std_sec"],
+            "Rata-rata Keypoint": eff_data["n_keypoints"],
+            "Folder Arsip": folder_name
+        })
+        
+    # 3. Ekspor Tabel Rekapitulasi Terpadu
+    df_log = pd.DataFrame(experiment_logs)
+    main_log_path = os.path.join(base_archive_path, f"Master_Log_{config.DATASET_DOMAIN}_{timestamp_full}.csv")
+    df_log.to_csv(main_log_path, index=False)
+    logger.info(f"Eksperimen komprehensif terintegrasi selesai. Log tersimpan di: {main_log_path}")
 # ---------------------------------------------------------------------------
 # TAHAP 8: PEMBUATAN MODEL PRODUKSI (DEPLOYMENT)
 # ---------------------------------------------------------------------------
@@ -719,6 +875,7 @@ STEPS = {
     "tune": step_tune,
     "export": step_export,
     "build_model": step_build_production_model,
+    "batch_log": step_batch_experiment,
 }
 
 def main():
