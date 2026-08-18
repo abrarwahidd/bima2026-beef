@@ -1,11 +1,9 @@
 """
 Visualisasi hasil: reduksi dimensi, evaluasi metrik, dan analisis distribusi.
-Standar output disesuaikan untuk publikasi akademik (SINTA/Scopus) dengan 
-resolusi 300 DPI dan gaya minimalis-kontras tinggi.
 """
 import os
 import matplotlib
-matplotlib.use("Agg")  # Headless mode
+matplotlib.use("Agg")  
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -19,7 +17,7 @@ from sklearn.preprocessing import MinMaxScaler
 import config
 
 def set_academic_style():
-    """Mengatur parameter global Matplotlib untuk standar jurnal akademik."""
+    """Mengatur parameter global Matplotlib"""
     plt.rcParams.update({
         "font.family": "serif",
         "font.serif": ["Times New Roman", "DejaVu Serif"],
@@ -39,19 +37,18 @@ def set_academic_style():
         "axes.spines.right": False
     })
 
-# Panggil styling di awal
+# Panggil styling
 set_academic_style()
 
 
 def plot_embedding_2d(X, labels, method_name, save_name, title=None):
-    """Plot reduksi dimensi PCA dengan standar visual akademik."""
+    """Plot reduksi dimensi PCA"""
     os.makedirs(config.FIGURES_DIR, exist_ok=True)
     pca = PCA(n_components=2, random_state=config.RANDOM_STATE)
     embedding = pca.fit_transform(X)
 
     fig, ax = plt.subplots(figsize=(7, 6))
     
-    # Menggunakan colormap yang ramah buta warna dan elegan
     scatter = ax.scatter(
         embedding[:, 0], embedding[:, 1], c=labels, cmap="Set1",
         s=25, alpha=0.8, edgecolors="white", linewidth=0.5
@@ -328,7 +325,7 @@ def plot_overall_radar_comparison(df_metrics, df_efficiency, save_name="overall_
     ]
     
     # 4. Normalisasi Min-Max (0-1) agar bisa di-plot di sumbu yang sama
-    # Untuk DB dan Time, kita balik (invers) sebelum dinormalisasi agar nilai tertinggi = terbaik
+    # Untuk DB dan Time, balik (invers) sebelum dinormalisasi agar nilai tertinggi = terbaik
     raw_data = np.array([sift_raw, surf_raw])
     
     # Inversi kolom DB (indeks 3) dan Time (indeks 4)

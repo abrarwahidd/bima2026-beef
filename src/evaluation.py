@@ -1,8 +1,6 @@
 """Komparasi SIFT vs SURF: efisiensi komputasi & kualitas separabilitas klaster."""
 import os
-
 import pandas as pd
-
 import config
 
 
@@ -40,7 +38,7 @@ def summarize_efficiency(df_efficiency):
 def build_cluster_metrics_table(results):
     """
     results: list of dict, masing-masing hasil satu kombinasi
-        {feature: "SIFT"/"SURF", method: "kmeans"/"gmm"/"agglomerative",
+        {feature: "SIFT"/"SURF", method: "kmeans"/"gmm",
          codebook_size: int, **internal_metrics, **external_metrics(optional)}
     """
     return pd.DataFrame(results)

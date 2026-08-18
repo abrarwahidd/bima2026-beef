@@ -15,7 +15,7 @@ def get_logger(name="pipeline"):
     os.makedirs(config.LOGS_DIR, exist_ok=True)
     logger = logging.getLogger(name)
     if logger.handlers:
-        return logger  # sudah dikonfigurasi sebelumnya, hindari duplikasi handler
+        return logger 
 
     logger.setLevel(getattr(logging, config.LOG_LEVEL, logging.INFO))
     fmt = logging.Formatter(

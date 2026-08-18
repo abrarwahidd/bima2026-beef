@@ -3,7 +3,7 @@
 Orkestrator pipeline unsupervised computer vision untuk deteksi mutu
 kesegaran daging sapi multidomain (SIFT/SURF -> BoVW -> Clustering).
 
-Contoh pemakaian:
+Code pemakaian:
     uv run python run_pipeline.py --step preprocess
     uv run python run_pipeline.py --step extract
     uv run python run_pipeline.py --step bovw
@@ -25,6 +25,7 @@ from tqdm import tqdm
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
 from sklearn.mixture import GaussianMixture
+from typing import Dict, Any
 import joblib
 
 import config
@@ -33,11 +34,9 @@ from src import bovw, clustering, evaluation, feature_extraction, preprocessing,
 logger = utils.get_logger("run_pipeline")
 
 
-# ---------------------------------------------------------------------------
 # TAHAP 1: PREPROCESSING & SEGMENTASI ROI
-# ---------------------------------------------------------------------------
 def step_preprocess():
-    logger.info("=== TAHAP 1: PREPROCESSING & SEGMENTASI ROI ===")
+    logger.info("TAHAP 1 - PREPROCESSING & SEGMENTASI ROI")
     utils.ensure_dirs()
 
     image_paths = utils.list_images(config.RAW_DATA_DIR, config.IMAGE_EXTENSIONS)
@@ -83,11 +82,9 @@ def step_preprocess():
     logger.info("Selesai preprocessing: %d sukses.", len(manifest))
 
 
-# ---------------------------------------------------------------------------
 # TAHAP 2: EKSTRAKSI FITUR LOKAL (SIFT & SURF)
-# ---------------------------------------------------------------------------
 def step_extract():
-    logger.info("=== TAHAP 2: EKSTRAKSI FITUR LOKAL (SIFT & SURF) ===")
+    logger.info("TAHAP 2 - EKSTRAKSI FITUR LOKAL (SIFT & SURF)")
     manifest = utils.load_pickle(os.path.join(config.INTERIM_DIR, "manifest.pkl"))
 
     for method in ("sift", "surf"):
@@ -121,11 +118,9 @@ def step_extract():
     evaluation.save_table(evaluation.summarize_efficiency(df_eff), "efficiency_summary.csv")
 
 
-# ---------------------------------------------------------------------------
 # TAHAP 3: BAGS OF VISUAL WORDS & EARLY FUSION
-# ---------------------------------------------------------------------------
 def step_bovw():
-    logger.info("=== TAHAP 3: BAGS OF VISUAL WORDS & EARLY FUSION ===")
+    logger.info("TAHAP 3 - BAGS OF VISUAL WORDS & EARLY FUSION")
     manifest = utils.load_pickle(os.path.join(config.INTERIM_DIR, "manifest.pkl"))
     filenames = [e["filename"] for e in manifest]
 
@@ -149,7 +144,7 @@ def step_bovw():
                     hsv_dict[f_name] = scaler.transform(hsv_dict[f_name].reshape(1, -1))[0]
 
                 # ----------------------------------------------------------
-                # PERBAIKAN: MinMaxScaler saja TIDAK cukup menyamakan skala
+                # MinMaxScaler saja TIDAK cukup menyamakan skala
                 # dengan blok tekstur. bovw_hist (Hellinger) punya norma-L2 = 1
                 # per baris (properti transformasi sqrt(L1-normalized)),
                 # sedangkan vektor HSV hasil MinMax bisa punya norma-L2
@@ -160,7 +155,7 @@ def step_bovw():
                 # yang dijalankan setelahnya (fitur bervarians besar otomatis
                 # mendominasi komponen utama).
                 #
-                # Solusi: normalisasi setiap vektor HSV ke norma-L2 = 1 SETELAH
+                # normalisasi setiap vektor HSV ke norma-L2 = 1 SETELAH
                 # MinMax, baru dikalikan HSV_FUSION_WEIGHT. Sekarang
                 # HSV_FUSION_WEIGHT=1.0 berarti "kontribusi warna setara
                 # dengan tekstur", weight=3.0 berarti "warna diberi bobot 3x
@@ -209,11 +204,9 @@ def step_bovw():
         utils.save_pickle(histograms, os.path.join(config.INTERIM_DIR, f"histograms_{method}.pkl"))
 
 
-# ---------------------------------------------------------------------------
 # TAHAP 4: CLUSTERING UNSUPERVISED DENGAN PCA
-# ---------------------------------------------------------------------------
 def step_cluster():
-    logger.info("=== TAHAP 4: CLUSTERING UNSUPERVISED ===")
+    logger.info("TAHAP 4 - CLUSTERING UNSUPERVISED")
     manifest = utils.load_pickle(os.path.join(config.INTERIM_DIR, "manifest.pkl"))
     true_labels = [e.get("label") for e in manifest]
     has_ground_truth = all(l is not None for l in true_labels) and len(true_labels) > 0
@@ -325,12 +318,9 @@ def step_cluster():
     evaluation.save_table(pd.DataFrame(stability_rows), "cluster_stability.csv")
 
 
-# ---------------------------------------------------------------------------
 # TAHAP 5: EVALUASI & KOMPARASI SIFT vs SURF
-# ---------------------------------------------------------------------------
 def step_evaluate():
-    logger.info("=== TAHAP 5: EVALUASI & KOMPARASI SIFT vs SURF ===")
-    logger.info("Menghasilkan bukti visual deteksi Keypoint untuk manuskrip...")
+    logger.info("TAHAP 5 - EVALUASI & KOMPARASI SIFT vs SURF")
     manifest_path = os.path.join(config.INTERIM_DIR, "manifest.pkl")
     if os.path.exists(manifest_path):
         manifest = utils.load_pickle(manifest_path)
@@ -349,14 +339,13 @@ def step_evaluate():
     df_results = pd.read_csv(os.path.join(config.TABLES_DIR, "cluster_metrics_all.csv"))
     df_eff = pd.read_csv(os.path.join(config.TABLES_DIR, "efficiency_raw.csv"))
 
-    # --- [INJEKSI KODE BARU: GRAFIK ABLATION PCA] ---
     logger.info("Menghasilkan visualisasi Ablation Study (PCA Impact)...")
     visualization.plot_pca_ablation_impact(
         df_results, 
         save_name="pca_impact_ablation.png"
     )
-    #baru buat keseluruhan
-    logger.info("Menghasilkan Radar Chart Komparasi Keseluruhan...")
+
+    logger.info("Menghasilkan Radar Chart untuk Komparasi Keseluruhan")
     visualization.plot_overall_radar_comparison(df_results, df_eff)
 
     df_default = df_results[
@@ -417,17 +406,14 @@ def step_evaluate():
     logger.info("Ringkasan akhir disimpan ke outputs/tables/final_summary.json")
 
 
-# ---------------------------------------------------------------------------
 # TAHAP 6: HYPERPARAMETER TUNING NATIVE (DEEP SEARCH)
-# ---------------------------------------------------------------------------
 def step_tune():
-    logger.info("=== TAHAP 6: HYPERPARAMETER TUNING (DEEP SEARCH) ===")
+    logger.info("TAHAP 6 - HYPERPARAMETER TUNING (DEEP SEARCH)")
     
-    # Kumpulan parameter baru untuk memaksimalkan Silhouette > 0.5
+    # Tuning parameter baru untuk memaksimalkan Silhouette > 0.5
     tuning_pca_components = [15, 20, 25, 30, 35]
     tuning_gmm_covariances = ['full', 'tied', 'diag']
     
-    # Kita fokuskan Hessian di angka optimal sebelumnya untuk menghemat waktu
     config.SURF_HESSIAN_THRESHOLD = 500
     config.CODEBOOK_SIZES = [200]
     config.DEFAULT_CODEBOOK_SIZE = 200
@@ -499,15 +485,7 @@ def step_tune():
     print(df_results.head(1).to_string(index=False))
     print("="*60)
 
-    # ------------------------------------------------------------------
-    # PERINGATAN METODOLOGIS + UJI STABILITAS KONFIGURASI TERBAIK
-    # ------------------------------------------------------------------
-    # Silhouette tertinggi dari grid search di atas TIDAK BOLEH langsung
-    # dilaporkan sebagai bukti separabilitas klaster - angka itu dipilih
-    # KARENA memaksimalkan metrik yang sama, jadi pasti bias optimis
-    # (circular: mencari lalu melaporkan metrik yang sama). Untuk laporan,
-    # gunakan silhouette_mean +/- std dari uji stabilitas di bawah, BUKAN
-    # SILHOUETTE_SCORE mentah dari baris teratas tabel deep search.
+
     logger.warning(
         "PERINGATAN METODOLOGIS: SILHOUETTE_SCORE pada tabel deep search "
         "adalah hasil PENCARIAN yang memaksimalkan metrik itu sendiri -> bias "
@@ -560,7 +538,7 @@ def step_tune():
 
 
 def step_export():
-    logger.info("=== TAHAP 7: EKSPOR TABEL PREDIKSI ===")
+    logger.info("TAHAP 7 - EKSPOR TABEL PREDIKSI")
     
     # 1. Memuat metadata gambar dan hasil klasterisasi
     manifest_path = os.path.join(config.INTERIM_DIR, "manifest.pkl")
@@ -606,8 +584,6 @@ def step_export():
     print(df_report.head(10).to_string(index=False))
     print("="*70)
 
-    # --- [PERBAIKAN: MEKANISME GUARDRAIL UNTUK DATASET PUBLIK] ---
-    # Periksa apakah kolom 'Hari Ke-' seluruhnya kosong (None/NaN)
     if df_report['Hari Ke-'].isnull().all():
         logger.warning(
             "Dataset eksternal (publik) terdeteksi. Metadata temporal ('Hari Ke-') tidak "
@@ -620,10 +596,7 @@ def step_export():
             save_name=f"temporal_cluster_{config.DATASET_DOMAIN}.png"
         )
         logger.info("Grafik distribusi klaster otonom tersimpan di direktori figures.")
-    # --- [AKHIR INJEKSI KODE BARU] ---
 
-
-from typing import Dict, Any
 
 def _execute_single_scenario(sc: Dict[str, Any], dict_sift: dict, dict_surf: dict, 
                              code_dir: str, results_dir: str) -> dict:
@@ -725,7 +698,7 @@ def step_batch_experiment() -> None:
         extractor = sc["feat"]
         logger.info(f"Mengeksekusi {exp_id}: {extractor} k={sc['k']} HSV={sc['use_hsv']} {sc['space'].upper()} {sc['algo'].upper()}")
         
-        # A. Pembuatan Direktori Arsip Otonom (Struktur Nama Singkat & Domain Terisolasi)
+        # A. Pembuatan Direktori Arsip otomatis
         folder_name = f"{config.DATASET_DOMAIN}_{exp_id}"
         exp_dir = os.path.join(base_archive_path, folder_name)
         code_dir, results_dir = os.path.join(exp_dir, "code_snapshot"), os.path.join(exp_dir, "results")
@@ -739,7 +712,7 @@ def step_batch_experiment() -> None:
         if os.path.exists("src"):
             shutil.copytree("src", os.path.join(code_dir, "src"))
             
-        # C. Eksekusi Skenario Komputasi Laten
+        # C. Eksekusi Skenario Komputasi
         metrics = _execute_single_scenario(sc, dict_sift, dict_surf, code_dir, results_dir)
         
         # D. Integrasi Metrik Efisiensi ke dalam Log
@@ -765,19 +738,17 @@ def step_batch_experiment() -> None:
             "Folder Arsip": folder_name
         })
         
-    # 3. Ekspor Tabel Rekapitulasi Terpadu
+    # 3. Ekspor Tabel Rekapitulasi
     df_log = pd.DataFrame(experiment_logs)
     main_log_path = os.path.join(base_archive_path, f"Master_Log_{config.DATASET_DOMAIN}_{timestamp_full}.csv")
     df_log.to_csv(main_log_path, index=False)
     logger.info(f"Eksperimen komprehensif terintegrasi selesai. Log tersimpan di: {main_log_path}")
-# ---------------------------------------------------------------------------
-# TAHAP 8: PEMBUATAN MODEL PRODUKSI (DEPLOYMENT)
-# ---------------------------------------------------------------------------
+
+# TAHAP 8: PEMBUATAN MODEL PRODUKSI 
 def step_build_production_model():
-    logger.info("=== TAHAP 8: MERAKIT MODEL PRODUKSI ===")
+    logger.info("TAHAP 8 - MERAKIT MODEL PRODUKSI")
     
-    # 1. Tentukan parameter terbaik dari hasil eksperimenmu
-    # 1. Membaca parameter terbaik dari hasil Deep Search secara otomatis
+    # 1. Tentukan parameter terbaik dari hasil eksperimen
     logger.info("Mengambil konfigurasi terbaik dari file CSV...")
     tuning_csv_path = os.path.join(config.TABLES_DIR, "tuning_results_deep_search.csv")
     
@@ -807,9 +778,10 @@ def step_build_production_model():
     codebook = codebooks[best_codebook_size]
     filenames = list(descriptors_dict.keys())
     
-    # 2. Buat ulang scaler warna HSV (MinMax lalu L2-normalize per baris -
-    # HARUS sama persis dengan step_bovw, atau model produksi tidak konsisten
-    # dengan hasil eksperimen yang dilaporkan)
+    """ 2. Buat ulang scaler warna HSV (MinMax lalu L2-normalize per baris -
+    HARUS sama persis dengan step_bovw, atau model produksi tidak konsisten
+    dengan hasil eksperimen yang dilaporkan """
+    
     logger.info("Melatih ulang MinMaxScaler...")
     raw_hsv_values = list(hsv_dict.values())
     scaler = MinMaxScaler()
@@ -841,7 +813,7 @@ def step_build_production_model():
     logger.info("Melatih GMM Classifier...")
     gmm = GaussianMixture(n_components=2, covariance_type=best_gmm_covariance, 
                           random_state=config.RANDOM_STATE, n_init=10)
-    gmm.fit(X_pca) # Kita memanggil .fit() untuk menyimpan statenya
+    gmm.fit(X_pca) 
     
     # 6. BUNGKUS MENJADI SATU FILE MODEL
     model_package = {
@@ -863,9 +835,7 @@ def step_build_production_model():
     logger.info("Model Produksi berhasil disimpan di: %s", model_path)
     logger.info("Model ini siap dimuat (di-load) untuk aplikasi klasifikasi otomatis tahun depan!")
 
-# ---------------------------------------------------------------------------
 # ENTRY POINT
-# ---------------------------------------------------------------------------
 STEPS = {
     "preprocess": step_preprocess,
     "extract": step_extract,

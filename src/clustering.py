@@ -28,8 +28,7 @@ def run_gmm(X, k=None, random_state=None):
     labels = model.fit_predict(X)
     return labels, model
 
-# Pipeline utama akan membaca dictionary ini secara dinamis
-# Sekarang hanya terdaftar dua algoritma
+#algoritma yang dipake
 CLUSTERING_METHODS = {
     "kmeans": run_kmeans,
     "gmm": run_gmm,
